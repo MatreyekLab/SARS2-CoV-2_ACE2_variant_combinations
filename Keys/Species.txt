@@ -1,0 +1,11 @@
+Homo sapiens
+Mus musculus
+Sus scrofa
+Rhinolophus sinicus
+Rhinolophus pearsonii
+Rhinolophus affinis
+Rhinolophus shameli
+Rhinolophus ferrumequinum
+Rhinolophus landeri
+Rhinolophus alcyone
+Manis javanica

@@ -349,9 +349,10 @@ combined_unsel_correlation_df$grouping <- factor(combined_unsel_correlation_df$g
 Comprehensive_neg_cntrl_correlations <- ggplot() + theme(legend.position = "top") +
   labs(x = "Pearson's r^2", y = "Count") +
   scale_x_continuous(limits = c(0.4,1.02)) +
-  geom_histogram(data = combined_unsel_correlation_df, aes(x = value^2, fill = grouping), color = "black", binwidth = 0.02, alpha = 0.8)
-Comprehensive_neg_cntrl_correlations
-ggsave(file = "Plots/Comprehensive_neg_cntrl_correlations.pdf", Comprehensive_neg_cntrl_correlations, height = 1.75, width = 2)
+  geom_histogram(data = combined_unsel_correlation_df, aes(x = value^2, fill = grouping), color = "black", binwidth = 0.02, alpha = 0.8) +
+  facet_grid(rows = vars(grouping), scales = "free_y") + 
+  NULL; Comprehensive_neg_cntrl_correlations
+ggsave(file = "Plots/Comprehensive_neg_cntrl_correlations.pdf", Comprehensive_neg_cntrl_correlations, height = 3.75, width = 2.5)
 ```
 
 ```{r Calculating the enrichment scores in Nextseq 4}
@@ -1253,13 +1254,17 @@ critical_value <- 1.96
 ## D614G
 pdb_variants_med$d614g_alpha <- (pdb_variants_med$dist_d614g - pdb_variants_med$dist_alpha) / rowMeans(pdb_variants_med[,c("dist_d614g","dist_alpha")])
 pdb_variants_med$d614g_alpha_outlier <- pdb_variants_med$d614g_alpha < (mean(pdb_variants_med$d614g_alpha) - sd(pdb_variants_med$d614g_alpha) * critical_value) | pdb_variants_med$d614g_alpha > (mean(pdb_variants_med$d614g_alpha) + sd(pdb_variants_med$d614g_alpha) * critical_value)
-ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_variants_med, aes(x = d614g_alpha), binwidth = 0.04, color = "black") +
-   geom_histogram(data = pdb_variants_med %>% filter(d614g_alpha_outlier == TRUE), aes(x = d614g_alpha), binwidth = 0.04, fill = "red", color = "black")
+D614G_Alpha_Histogram <- ggplot() + scale_x_continuous(limits = c(-0.5,0.5), breaks = c(c(-0.5,0,0.5))) + 
+  geom_histogram(data = pdb_variants_med, aes(x = d614g_alpha), binwidth = 0.04, color = "black") +
+  geom_histogram(data = pdb_variants_med %>% filter(d614g_alpha_outlier == TRUE), aes(x = d614g_alpha), binwidth = 0.04, fill = "red", color = "black")
+ggsave(file = "Plots/D614G_Alpha_Histogram.pdf", D614G_Alpha_Histogram, height = 1.25, width = 1.4)
 
 pdb_variants_med$d614g_beta <- (pdb_variants_med$dist_d614g - pdb_variants_med$dist_beta) / rowMeans(pdb_variants_med[,c("dist_d614g","dist_beta")])
 pdb_variants_med$d614g_beta_outlier <- pdb_variants_med$d614g_beta < (mean(pdb_variants_med$d614g_beta) - sd(pdb_variants_med$d614g_beta) * critical_value) | pdb_variants_med$d614g_beta > (mean(pdb_variants_med$d614g_beta) + sd(pdb_variants_med$d614g_beta) * critical_value)
-ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_variants_med, aes(x = d614g_beta), binwidth = 0.04, color = "black") +
+D614G_Beta_Histogram <- ggplot() + scale_x_continuous(limits = c(-0.5,0.5), breaks = c(c(-0.5,0,0.5))) +
+  geom_histogram(data = pdb_variants_med, aes(x = d614g_beta), binwidth = 0.04, color = "black") +
    geom_histogram(data = pdb_variants_med %>% filter(d614g_beta_outlier == TRUE), aes(x = d614g_beta), binwidth = 0.04, fill = "red", color = "black")
+ggsave(file = "Plots/D614G_Beta_Histogram.pdf", D614G_Beta_Histogram, height = 1.25, width = 1.4)
 
 pdb_variants_med$d614g_gamma <- (pdb_variants_med$dist_d614g - pdb_variants_med$dist_gamma) / rowMeans(pdb_variants_med[,c("dist_d614g","dist_gamma")])
 pdb_variants_med$d614g_gamma_outlier <- pdb_variants_med$d614g_gamma < (mean(pdb_variants_med$d614g_gamma) - sd(pdb_variants_med$d614g_gamma) * critical_value) | pdb_variants_med$d614g_gamma > (mean(pdb_variants_med$d614g_gamma) + sd(pdb_variants_med$d614g_gamma) * critical_value)
@@ -1268,13 +1273,17 @@ ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_
 
 pdb_variants_med$d614g_delta <- (pdb_variants_med$dist_d614g - pdb_variants_med$dist_delta) / rowMeans(pdb_variants_med[,c("dist_d614g","dist_delta")])
 pdb_variants_med$d614g_delta_outlier <- pdb_variants_med$d614g_delta < (mean(pdb_variants_med$d614g_delta) - sd(pdb_variants_med$d614g_delta) * critical_value) | pdb_variants_med$d614g_delta > (mean(pdb_variants_med$d614g_delta) + sd(pdb_variants_med$d614g_delta) * critical_value)
-ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_variants_med, aes(x = d614g_delta), binwidth = 0.04, color = "black") +
+D614G_Delta_Histogram <- ggplot() + scale_x_continuous(limits = c(-0.5,0.5), breaks = c(c(-0.5,0,0.5))) + 
+  geom_histogram(data = pdb_variants_med, aes(x = d614g_delta), binwidth = 0.04, color = "black") +
    geom_histogram(data = pdb_variants_med %>% filter(d614g_delta_outlier == TRUE), aes(x = d614g_delta), binwidth = 0.04, fill = "red", color = "black")
+ggsave(file = "Plots/D614G_Delta_Histogram.pdf", D614G_Delta_Histogram, height = 1.25, width = 1.4)
 
 pdb_variants_med$d614g_ba1 <- (pdb_variants_med$dist_d614g - pdb_variants_med$dist_ba1) / rowMeans(pdb_variants_med[,c("dist_d614g","dist_ba1")])
 pdb_variants_med$d614g_ba1_outlier <- pdb_variants_med$d614g_ba1 < (mean(pdb_variants_med$d614g_ba1) - sd(pdb_variants_med$d614g_ba1) * critical_value) | pdb_variants_med$d614g_ba1 > (mean(pdb_variants_med$d614g_ba1) + sd(pdb_variants_med$d614g_ba1) * critical_value)
-ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_variants_med, aes(x = d614g_ba1), binwidth = 0.04, color = "black") +
+D614G_BA1_Histogram <- ggplot() + scale_x_continuous(limits = c(-0.5,0.5), breaks = c(c(-0.5,0,0.5))) + 
+  geom_histogram(data = pdb_variants_med, aes(x = d614g_ba1), binwidth = 0.04, color = "black") +
    geom_histogram(data = pdb_variants_med %>% filter(d614g_ba1_outlier == TRUE), aes(x = d614g_ba1), binwidth = 0.04, fill = "red", color = "black")
+ggsave(file = "Plots/D614G_BA1_Histogram.pdf", D614G_BA1_Histogram, height = 1.25, width = 1.4)
 
 ## Alpha
 pdb_variants_med$alpha_beta <- (pdb_variants_med$dist_alpha - pdb_variants_med$dist_beta) / rowMeans(pdb_variants_med[,c("dist_alpha","dist_beta")])
@@ -1310,8 +1319,10 @@ ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_
 
 pdb_variants_med$beta_ba1 <- (pdb_variants_med$dist_beta - pdb_variants_med$dist_ba1) / rowMeans(pdb_variants_med[,c("dist_beta","dist_ba1")])
 pdb_variants_med$beta_ba1_outlier <- pdb_variants_med$beta_ba1 < (mean(pdb_variants_med$beta_ba1) - sd(pdb_variants_med$beta_ba1) * critical_value) | pdb_variants_med$beta_ba1 > (mean(pdb_variants_med$beta_ba1) + sd(pdb_variants_med$beta_ba1) * critical_value)
-ggplot() + scale_x_continuous(limits = c(-0.5,0.5)) + geom_histogram(data = pdb_variants_med, aes(x = beta_ba1), binwidth = 0.04, color = "black") +
+Beta_BA1_Histogram <- ggplot() + scale_x_continuous(limits = c(-0.5,0.5), breaks = c(c(-0.5,0,0.5))) + 
+  geom_histogram(data = pdb_variants_med, aes(x = beta_ba1), binwidth = 0.04, color = "black") +
    geom_histogram(data = pdb_variants_med %>% filter(beta_ba1_outlier == TRUE), aes(x = beta_ba1), binwidth = 0.04, fill = "red", color = "black")
+ggsave(file = "Plots/Beta_BA1_Histogram.pdf", Beta_BA1_Histogram, height = 1.25, width = 1.4)
 
 ## Gamma
 pdb_variants_med$gamma_delta <- (pdb_variants_med$dist_gamma - pdb_variants_med$dist_delta) / rowMeans(pdb_variants_med[,c("dist_gamma","dist_delta")])
@@ -1359,6 +1370,13 @@ Angstrom_scatterplot_D614G_BA1_2 <- ggplot() + labs(x = "Angstroms (D614G)", y =
   NULL
 Angstrom_scatterplot_D614G_BA1_2
 ggsave(file = "Plots/Angstrom_scatterplot_D614G_BA1_2.pdf", Angstrom_scatterplot_D614G_BA1_2, height = 1.5, width = 1.5)
+
+Angstrom_scatterplot_Beta_BA1_2 <- ggplot() + labs(x = "Angstroms (Beta)", y = "Angstroms (BA1)") +
+  geom_point(data = pdb_variants_med, aes(x = dist_beta, y = dist_ba1), alpha = 0.3) +
+  geom_point(data = pdb_variants_med %>% filter(beta_ba1_outlier == TRUE), aes(x = dist_beta, y = dist_ba1), color = "red", alpha = 0.4) +
+  NULL
+Angstrom_scatterplot_Beta_BA1_2
+ggsave(file = "Plots/Angstrom_scatterplot_Beta_BA1_2.pdf", Angstrom_scatterplot_Beta_BA1_2, height = 1.5, width = 1.5)
 
 
 ## Now add everything together 
@@ -1513,7 +1531,7 @@ ggsave(file = "Plots/s2_variant_average_pca_plot.pdf", s2_variant_average_pca_pl
 
 ```{r pca based on atomic coordinates of key interacting residues for individual structures}
 ### Now getting all of the individual structure data points in here
-all_pdb <- merge(merge(merge(merge(merge(pdb_d614g_combined[,c("ace2_rbd","dist_7sxy","dist_6lzg","dist_6m0j")],
+all_pdb <- merge(merge(merge(merge(merge(pdb_d614g_combined[,c("ace2_rbd","dist_7sxy","dist_6lzg","dist_6m0j","dist_6m17")],
                  pdb_alpha_combined[,c("ace2_rbd","dist_8dlk","dist_7mjn","dist_7ekf")], by = "ace2_rbd"),
                  pdb_beta_combined[,c("ace2_rbd","dist_7vx4","dist_8dln","dist_7v80","dist_7ekg","dist_7sy6")], by = "ace2_rbd"),
                  pdb_gamma_combined[,c("ace2_rbd","dist_7ekc","dist_7v84","dist_8dlq","dist_7sy8")], by = "ace2_rbd"),
@@ -1521,7 +1539,7 @@ all_pdb <- merge(merge(merge(merge(merge(pdb_d614g_combined[,c("ace2_rbd","dist_
                  pdb_ba1_combined[,c("ace2_rbd","dist_7wk6","dist_7t9l","dist_7wpb","dist_7wbp","dist_7whh")], by = "ace2_rbd")#,
                  
 all_pdb_intxn <- merge(network_pairs2[,c("ace2_rbd","ace2_position","rbd_position")], all_pdb, by = "ace2_rbd")
-pdb_variants_for_pca2 <- data.frame(t(all_pdb_intxn[seq(4,27)]))
+pdb_variants_for_pca2 <- data.frame(t(all_pdb_intxn[seq(4,28)]))
 pdb_variants_for_pca3 <- pdb_variants_for_pca2[ , colSums(is.na(pdb_variants_for_pca2)) == 0]
 pca_for_pdb2 = prcomp(pdb_variants_for_pca3, scale = TRUE)
 scores2 = as.data.frame(pca_for_pdb2$x)
@@ -1543,7 +1561,7 @@ ggsave(file = "Plots/S2_variant_all_structures_pca_plot.pdf", s2_variant_all_str
 ggsave(file = "Plots/S2_variant_all_structures_pca_plot.png", s2_variant_all_structures_pca_plot, height = 3, width = 5)
 
 ### Not getting all of the individual structure datapoints in here
-all_cryo <- merge(merge(merge(merge(merge(pdb_d614g_combined[,c("ace2_rbd","dist_7sxy")],
+all_cryo <- merge(merge(merge(merge(merge(pdb_d614g_combined[,c("ace2_rbd","dist_7sxy","dist_6m17")],
                  pdb_alpha_combined[,c("ace2_rbd","dist_8dlk","dist_7mjn")], by = "ace2_rbd"),
                  pdb_beta_combined[,c("ace2_rbd","dist_7vx4","dist_8dln","dist_7v80","dist_7sy6")], by = "ace2_rbd"),
                  pdb_gamma_combined[,c("ace2_rbd","dist_7v84","dist_8dlq","dist_7sy8")], by = "ace2_rbd"),
@@ -2477,6 +2495,18 @@ ggsave(file = "Plots/Infection_step_plot.pdf", Infection_step_plot, height = 1.7
 ## Below is an analysis method for comparing the differences in infection between the various SARS-CoV-2 RBD variants
 ```{r Create scatterplots for pairwise comparisons between SARS2 variants with ACE2 orthologs}
 
+humutant_labels <- c("WT","K31D","K353D","D38H","E23K","K26E","I21N","E329G","G352V","E35K","D355N","G326E")
+
+combined_ortholog_variant_unmelt$set_label <- "ortholog"
+
+for(x in 1:nrow(combined_ortholog_variant_unmelt)){
+  if(combined_ortholog_variant_unmelt$sample[x] %in% c(humutant_labels)){combined_ortholog_variant_unmelt$set_label[x] <- "humutant"}
+}
+
+```
+
+
+```{r Create scatterplots for pairwise comparisons between SARS2 variants with ACE2 orthologs}
 d614g_alpha_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"D614G"]),
                                  mean(((combined_ortholog_variant_unmelt %>% filter(sample == "dEcto"))[,"D614G"]))),
                       virus2 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Alpha"]),
@@ -2484,9 +2514,11 @@ d614g_alpha_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %
 lm_d614g_alpha <- lm(d614g_alpha_df[,"virus2"] ~ d614g_alpha_df[,"virus1"])
 D614G_Alpha_scatterplot <- ggplot() +
   geom_abline(slope = lm_d614g_alpha$coefficients[2], intercept = lm_d614g_alpha$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Alpha), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = D614G, y = Alpha), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = D614G, y = Alpha), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = D614G, y = Alpha), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("M.musculus","R.shameli","R.sinicus_200","R.landeri","R.ferrumequinum","R.sinicus_215")), aes(x = D614G, y = Alpha, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
+  geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("M.musculus","R.shameli","R.sinicus_200","R.landeri","R.ferrumequinum","R.sinicus_215")), aes(x = D614G, y = Alpha, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; D614G_Alpha_scatterplot
 ggsave(file = "Plots/D614G_Alpha_scatterplot.pdf", D614G_Alpha_scatterplot, height = 1.5, width = 2.25)
 
 d614g_beta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"D614G"]),
@@ -2496,10 +2528,12 @@ d614g_beta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>
 lm_d614g_beta <- lm(d614g_beta_df[,"virus2"] ~ d614g_beta_df[,"virus1"])
 D614G_Beta_scatterplot <- ggplot() +
   geom_abline(slope = lm_d614g_beta$coefficients[2], intercept = lm_d614g_beta$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = D614G, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = D614G, y = Beta), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = D614G, y = Beta), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
-ggsave(file = "Plots/D614G_Beta_scatterplot.pdf", D614G_Beta_scatterplot, height = 2, width = 2.25)
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; D614G_Beta_scatterplot
+ggsave(file = "Plots/D614G_Beta_scatterplot.pdf", D614G_Beta_scatterplot, height = 1.5, width = 2.25)
 
 d614g_delta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"D614G"]),
                                  mean(((combined_ortholog_variant_unmelt %>% filter(sample == "dEcto"))[,"D614G"]))),
@@ -2508,7 +2542,8 @@ d614g_delta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %
 lm_d614g_delta <- lm(d614g_delta_df[,"virus2"] ~ d614g_delta_df[,"virus1"])
 D614G_Delta_scatterplot <- ggplot() +
   geom_abline(slope = lm_d614g_delta$coefficients[2], intercept = lm_d614g_delta$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Delta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = D614G, y = Delta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = D614G, y = Delta), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = D614G, y = Delta), color = "blue", size = 2, alpha = 0.4) +
   geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Delta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
 ggsave(file = "Plots/D614G_Delta_scatterplot.pdf", D614G_Delta_scatterplot, height = 1.5, width = 2.25)
@@ -2521,9 +2556,11 @@ d614g_gamma_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %
 lm_d614g_gamma <- lm(d614g_gamma_df[,"virus2"] ~ d614g_gamma_df[,"virus1"])
 D614G_gamma_scatterplot <- ggplot() +
   geom_abline(slope = lm_d614g_gamma$coefficients[2], intercept = lm_d614g_gamma$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Gamma), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = D614G, y = Gamma), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = D614G, y = Gamma), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = D614G, y = Gamma), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Gamma, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = Gamma, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) + 
+  NULL; D614G_gamma_scatterplot
 ggsave(file = "Plots/D614G_Gamma_scatterplot.pdf", D614G_gamma_scatterplot, height = 1.5, width = 2.25)
 
 
@@ -2534,9 +2571,11 @@ d614g_ba1_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>%
 lm_d614g_ba1 <- lm(d614g_ba1_df[,"virus2"] ~ d614g_ba1_df[,"virus1"])
 D614G_BA1_scatterplot <- ggplot() +
   geom_abline(slope = lm_d614g_ba1$coefficients[2], intercept = lm_d614g_ba1$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = D614G, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = D614G, y = BA1), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = D614G, y = BA1), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = D614G, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; D614G_BA1_scatterplot
 ggsave(file = "Plots/D614G_BA1_scatterplot.pdf", D614G_BA1_scatterplot, height = 1.5, width = 2.25)
 
 
@@ -2547,10 +2586,12 @@ alpha_beta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>
 lm_alpha_beta <- lm(alpha_beta_df[,"virus2"] ~ alpha_beta_df[,"virus1"])
 Alpha_Beta_scatterplot <- ggplot() +
   geom_abline(slope = lm_alpha_beta$coefficients[2], intercept = lm_alpha_beta$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Alpha, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Alpha, y = Beta), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Alpha, y = Beta), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
-ggsave(file = "Plots/Alpha_Beta_scatterplot.pdf", Alpha_Beta_scatterplot, height = 2, width = 2.25)
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Alpha_Beta_scatterplot
+ggsave(file = "Plots/Alpha_Beta_scatterplot.pdf", Alpha_Beta_scatterplot, height = 1.5, width = 2.25)
 
 
 alpha_gamma_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Alpha"]),
@@ -2560,10 +2601,12 @@ alpha_gamma_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %
 lm_alpha_gamma <- lm(alpha_gamma_df[,"virus2"] ~ alpha_gamma_df[,"virus1"])
 Alpha_Gamma_scatterplot <- ggplot() +
   geom_abline(slope = lm_alpha_gamma$coefficients[2], intercept = lm_alpha_gamma$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Gamma), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Alpha, y = Gamma), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Alpha, y = Gamma), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Alpha, y = Gamma), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Gamma, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
-ggsave(file = "Plots/Alpha_Gamma_scatterplot.pdf", Alpha_Gamma_scatterplot, height = 2, width = 2.25)
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Alpha, y = Gamma, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Alpha_Gamma_scatterplot
+ggsave(file = "Plots/Alpha_Gamma_scatterplot.pdf", Alpha_Gamma_scatterplot, height = 1.5, width = 2.25)
 
 
 gamma_beta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Gamma"]),
@@ -2574,11 +2617,13 @@ lm_gamma_beta <- lm(gamma_beta_df[,"virus2"] ~ gamma_beta_df[,"virus1"])
 
 Gamma_Beta_scatterplot <- ggplot() +
   geom_abline(slope = lm_gamma_beta$coefficients[2], intercept = lm_gamma_beta$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Gamma, y = Beta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Gamma, y = Beta), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Gamma, y = Beta), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample == "R.ferrumequinum"), aes(x = Gamma, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
-  NULL
+  #geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample == "R.ferrumequinum"), aes(x = Gamma, y = Beta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Gamma_Beta_scatterplot
 ggsave(file = "Plots/Gamma_Beta_scatterplot.pdf", Gamma_Beta_scatterplot, height = 1.5, width = 2.25)
+
 
 gamma_delta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Gamma"]),
                                  mean(((combined_ortholog_variant_unmelt %>% filter(sample == "dEcto"))[,"Gamma"]))),
@@ -2587,10 +2632,13 @@ gamma_delta_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %
 lm_gamma_delta <- lm(gamma_delta_df[,"virus2"] ~ gamma_delta_df[,"virus1"])
 Gamma_Delta_scatterplot <- ggplot() +
   geom_abline(slope = lm_gamma_delta$coefficients[2], intercept = lm_gamma_delta$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = Delta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Gamma, y = Delta), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Gamma, y = Delta), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Gamma, y = Delta), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = Delta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
-ggsave(file = "Plots/Gamma_Delta_scatterplot.pdf", Gamma_Delta_scatterplot, height = 2, width = 2.25)
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = Delta, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Gamma_Delta_scatterplot
+ggsave(file = "Plots/Gamma_Delta_scatterplot.pdf", Gamma_Delta_scatterplot, height = 1.5, width = 2.25)
+
 
 gamma_ba1_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Gamma"]),
                                  mean(((combined_ortholog_variant_unmelt %>% filter(sample == "dEcto"))[,"Gamma"]))),
@@ -2599,10 +2647,13 @@ gamma_ba1_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>%
 lm_gamma_ba1 <- lm(gamma_ba1_df[,"virus2"] ~ gamma_ba1_df[,"virus1"])
 Gamma_BA1_scatterplot <- ggplot() +
   geom_abline(slope = lm_gamma_ba1$coefficients[2], intercept = lm_gamma_ba1$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Gamma, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Gamma, y = BA1), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Gamma, y = BA1), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
-ggsave(file = "Plots/Gamma_BA1_scatterplot.pdf", Gamma_BA1_scatterplot, height = 2, width = 2.25)
+  geom_text_repel(data = combined_ortholog_variant_unmelt, aes(x = Gamma, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Gamma_BA1_scatterplot
+ggsave(file = "Plots/Gamma_BA1_scatterplot.pdf", Gamma_BA1_scatterplot, height = 1.5, width = 2.25)
+
 
 beta_ba1_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% filter(sample == "H.sapiens"))[,"Beta"]),
                                  mean(((combined_ortholog_variant_unmelt %>% filter(sample == "dEcto"))[,"Beta"]))),
@@ -2611,10 +2662,13 @@ beta_ba1_df <- data.frame(virus1 = c(mean((combined_ortholog_variant_unmelt %>% 
 lm_beta_ba1 <- lm(beta_ba1_df[,"virus2"] ~ beta_ba1_df[,"virus1"])
 Beta_BA1_scatterplot <- ggplot() +
   geom_abline(slope = lm_beta_ba1$coefficients[2], intercept = lm_beta_ba1$coefficients[1], alpha = 0.1, size = 4) +
-  geom_point(data = combined_ortholog_variant_unmelt, aes(x = Beta, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "ortholog"), aes(x = Beta, y = BA1), alpha = 0.4) +
+  geom_point(data = combined_ortholog_variant_unmelt %>% filter(set_label == "humutant"), aes(x = Beta, y = BA1), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("H.sapiens","dEcto","Control")), aes(x = Beta, y = BA1), color = "blue", size = 2, alpha = 0.4) +
-  geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("R.sinicus_215","R.pearsonii","M.javanica","K31D","M.musculus")), aes(x = Beta, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) 
+  geom_text_repel(data = combined_ortholog_variant_unmelt %>% filter(sample %in% c("R.sinicus_215","R.pearsonii","M.javanica","K31D","M.musculus")), aes(x = Beta, y = BA1, label = sample), color = "red", size = 1.5, segment.color = "orange", segment.alpha = 0.4, force = 0.5) +
+  NULL; Beta_BA1_scatterplot
 ggsave(file = "Plots/Beta_BA1_scatterplot.pdf", Beta_BA1_scatterplot, height = 1.5, width = 2.25)
+
 
 ## Make a dataframe of pairwise Pearsons's correlations
 cor(combined_ortholog_variant_unmelt$Beta, combined_ortholog_variant_unmelt$Gamma, method = "pearson")^2
@@ -2664,10 +2718,13 @@ rbd_identity_ortholog_cor_matrix <- merge(rbd_identity3_melt, ortholog_inf_cor_m
 rbd_identity_ortholog_cor_matrix$virus1 <- factor(rbd_identity_ortholog_cor_matrix$virus1, levels = c("D614G", "Alpha", "Beta","Delta","Gamma","BA1"))
 rbd_identity_ortholog_cor_matrix$virus2 <- factor(rbd_identity_ortholog_cor_matrix$virus2, levels = c("D614G", "Alpha", "Beta","Delta","Gamma","BA1"))
 
-rbd_identity_ortholog_cor_matrix2 <- rbd_identity_ortholog_cor_matrix %>% filter(index %in% c(2,3,4,5,9,10,11,16,17,23,31,32,33,34,35,36,29))
+rbd_identity_ortholog_cor_matrix2 <- rbd_identity_ortholog_cor_matrix %>% filter(index %in% c(2,3,4,5,9,10,11,16,17,23,31,32,33,34,35))
+
+rbd_color_manual <- c("D614G" = "#F8766D", "Alpha" = "#B79F00", "Beta" = "#00BA38", "Gamma" = "#00BFC4", "Delta" = "#619CFF", "BA1" = "#F564E3")
 
 RBD_identity_vs_ortholog_infection_correlation <- ggplot() + theme(legend.position = "right", panel.grid.major = element_blank()) + 
   scale_y_continuous(limits = c(0,1)) + scale_x_continuous(limits = c(0,15)) +
+  scale_color_manual(values = rbd_color_manual) +
   geom_point(data = rbd_identity_ortholog_cor_matrix2, aes(x = aa_diff, y = pearson_rsquared, color = virus1), shape = 16, size = 1.25, alpha = 0.5) +
   geom_point(data = rbd_identity_ortholog_cor_matrix2, aes(x = aa_diff, y = pearson_rsquared, color = virus2), shape = 1, size = 1.6, stroke = 1.25, alpha = 0.25) +
   NULL; RBD_identity_vs_ortholog_infection_correlation
@@ -2681,12 +2738,19 @@ pca_ortholog_infection = prcomp(ortholog_infection_for_pca, scale. = TRUE)
 pca_ortholog_infection_scores = as.data.frame(pca_ortholog_infection$x)
 pca_ortholog_infection_scores$labels <- combined_ortholog_variant_unmelt$sample
 
+pca_ortholog_infection_scores$set_label <- "ortholog"
+
+for(x in 1:nrow(pca_ortholog_infection_scores)){
+  if(pca_ortholog_infection_scores$labels[x] %in% c(humutant_labels)){pca_ortholog_infection_scores$set_label[x] <- "humutant"}
+}
+
 ortholog_infection_pca <- ggplot() + theme(panel.grid.major = element_blank()) +
   scale_x_continuous(limits = c(-2.3,4)) + scale_y_continuous(limits = c(-2.3,2.8)) +
   xlab(paste("Component 1 (",round(summary(pca_ortholog_infection)$importance[2] * 100,0),"% of variance)",sep="")) + 
   ylab(paste("Component 2\n(",round(summary(pca_ortholog_infection)$importance[5] * 100,0),"% of variance)",sep="")) + 
   geom_text_repel(data = pca_ortholog_infection_scores %>% filter(labels %in% c("R.ferrumequinum","R.shameli","R.sinicus_215","R.landeri","M.musculus","R.sinicus_200","S.scrofa","M.javanica","R.alcyone","R.affinis")), aes(x = PC1, y = PC2, label = labels), segment.color = 'grey90', size = 1.25, segment.alpha = 0.5, color = "red") + #point.padding = 0.1
-  geom_point(data = pca_ortholog_infection_scores, aes(x = PC1, y = PC2), size = 1, alpha = 0.5) +
+  geom_point(data = pca_ortholog_infection_scores %>% filter(set_label == "ortholog"), aes(x = PC1, y = PC2), size = 1, alpha = 0.5) +
+  geom_point(data = pca_ortholog_infection_scores %>% filter(set_label == "humutant"), aes(x = PC1, y = PC2), alpha = 0.4, size = 1, color = "grey50") +
   geom_point(data = pca_ortholog_infection_scores %>% filter(labels %in% c("H.sapiens(rep1)","H.sapiens(rep2)")), aes(x = PC1, y = PC2), size = 1, alpha = 0.5, color = "orange") +
    geom_point(data = pca_ortholog_infection_scores %>% filter(labels %in% c("dEcto")), aes(x = PC1, y = PC2), size = 1, alpha = 0.5, color = "green") +
   NULL; ortholog_infection_pca
@@ -3095,6 +3159,23 @@ Variant_compatibility_cumulative <- ggplot() +
   theme(axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45)) + 
   geom_tile(data = ortholog2_nozero4_melt, aes(x = variable, y = ortholog, fill = value), color = "black"); Variant_compatibility_cumulative
 ggsave(file = "Plots/Variant_compatibility_cumulative.pdf", Variant_compatibility_cumulative, height = 2.25, width = 2.8)
+
+
+## Finally make a line chart
+
+ortholog2_nozero4_melt_summary <- ortholog2_nozero4_melt %>% filter(variable %in% c("zero_var","two_var","three_var","five_var")) %>% group_by(variable) %>% summarize(sum = sum(value)) %>% mutate(index = c(0,2,3,5), fraction = sum/14)
+
+
+Variant_compatibility_cumulative_linegraph <- ggplot() + 
+  theme(axis.text.x = element_blank(), panel.grid = element_blank(), axis.ticks.x = element_blank()) + 
+  labs(x = NULL, y = NULL) + 
+  scale_fill_gradient(low = "white", high = "darkgreen") + 
+  scale_y_continuous(limits = c(0,1), expand = c(0,0), breaks = c(0,0.5,1), position = "right") +
+  geom_hline(yintercept = 0.5, linetype = 2, alpha = 0.4) +
+  geom_line(data = ortholog2_nozero4_melt_summary, aes(x = index, y = fraction), alpha = 0.5) +
+  geom_point(data = ortholog2_nozero4_melt_summary, aes(x = index, y = fraction), size = 2, color = "black") +
+  geom_point(data = ortholog2_nozero4_melt_summary, aes(x = index, y = fraction), color = "green"); Variant_compatibility_cumulative_linegraph
+ggsave(file = "Plots/Variant_compatibility_cumulative_linegraph.pdf", Variant_compatibility_cumulative_linegraph, height = 0.5, width = 2.4)
 ```
 
 ```{r Final comparison of variant correlations}
@@ -3121,5 +3202,24 @@ Final_correlations_plot <- ggplot() + scale_x_continuous(limits = c(-0.01,1.01))
   #geom_point(data = final_variant_correlations_combined, aes(x = mut_inf, y = ortholog_inf, fill = virus1), size = 0.5) +
   NULL; Final_correlations_plot
 ggsave(file = "Plots/Final_correlations_plot.pdf", Final_correlations_plot, height = 2, width = 3.5)
+
+
+final_variant_correlations_combined_filtered <- final_variant_correlations_combined %>% filter(structure != 1) %>% arrange(desc(ortholog_inf))
+final_variant_correlations_combined_filtered$index <- seq(1,nrow(final_variant_correlations_combined_filtered))
+final_variant_correlations_combined_filtered2 <- final_variant_correlations_combined_filtered %>% filter(index %in% seq(1,29,2))
+
+final_variant_correlations_combined_filtered2$virus1 <- factor(final_variant_correlations_combined_filtered2$virus1, levels = c("D614G", "Alpha", "Beta","Delta","Gamma","BA1"))
+final_variant_correlations_combined_filtered2$virus2 <- factor(final_variant_correlations_combined_filtered2$virus2, levels = c("D614G", "Alpha", "Beta","Delta","Gamma","BA1"))
+
+rbd_color_manual <- c("D614G" = "#F8766D", "Alpha" = "#B79F00", "Beta" = "#00BA38", "Gamma" = "#00BFC4", "Delta" = "#619CFF", "BA1" = "#F564E3")
+
+Final_correlations_plot <- ggplot() + theme(legend.position = "right", panel.grid.major = element_blank()) + 
+  scale_color_manual(values = rbd_color_manual) + 
+  scale_x_continuous(limits = c(-0.01,1.01)) + scale_y_continuous(limits = c(0.2,1.02)) +
+  geom_point(data = final_variant_correlations_combined_filtered2, aes(x = mut_inf, y = ortholog_inf, color = virus1), shape = 16, size = 1.25, alpha = 0.5) +
+  geom_point(data = final_variant_correlations_combined_filtered2, aes(x = mut_inf, y = ortholog_inf, color = virus2), shape = 1, size = 1.6, stroke = 1.25, alpha = 0.25) +
+  NULL; Final_correlations_plot
+ggsave(file = "Plots/Final_correlations_plot.pdf", Final_correlations_plot, height = 2.25, width = 3.5)
+
 
 ```

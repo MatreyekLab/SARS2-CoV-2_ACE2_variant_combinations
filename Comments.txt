@@ -1,0 +1,3 @@
+Pairs with Anna's comment, but it might be worth presenting a positional or running average sequence similarity (x axis = position, y = similarity) between the ACE2 constructs.  If changes are seemingly minor or not near interacting region, high variability may have limited impact on overall impact of high variability.
+
+Given that at least half the paper and most of the literature deal with characterization of H. Sapiens is it worth highlighting the H.S. in 5A visually?

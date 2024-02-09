@@ -1,0 +1,1154 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r Set up the analysis script}
+
+## Clear existing environment
+rm(list = ls())
+
+## Load basic useful packages
+library(tidyverse)
+library(ggrepel)
+library(ggbeeswarm)
+library(reshape)
+library(sf)
+library(here)
+library(ggfortify)
+library(googlesheets4)
+library(rpart)
+#install.packages("rpart.plot")
+library(rpart.plot)
+
+## Set the seed for immediate reproducibility
+set.seed(1234567)
+
+## Set the base theme to what I like
+theme_set(theme_bw())
+theme_update(legend.title = element_blank(), panel.grid.minor = element_blank(), text = element_text(size = 10))
+
+## Setting some universal thresholds for some of the subsequent analyses
+quantile_cutoff <- 0.99
+minquant_fraction <- 0.2
+
+to_single_notation <- function(arg1){
+  if(toupper(arg1) == "ALA"){return("A")}
+  if(toupper(arg1) == "CYS"){return("C")}
+  if(toupper(arg1) == "ASP"){return("D")}
+  if(toupper(arg1) == "GLU"){return("E")}
+  if(toupper(arg1) == "GLH"){return("E")}
+  if(toupper(arg1) == "PHE"){return("F")}
+  if(toupper(arg1) == "GLY"){return("G")}
+  if(toupper(arg1) == "HIS"){return("H")}
+  if(toupper(arg1) == "ILE"){return("I")}
+  if(toupper(arg1) == "LYS"){return("K")}
+  if(toupper(arg1) == "LEU"){return("L")}
+  if(toupper(arg1) == "MET"){return("M")}
+  if(toupper(arg1) == "ASN"){return("N")}
+  if(toupper(arg1) == "PRO"){return("P")}
+  if(toupper(arg1) == "GLN"){return("Q")}
+  if(toupper(arg1) == "ARG"){return("R")}
+  if(toupper(arg1) == "SER"){return("S")}
+  if(toupper(arg1) == "THR"){return("T")}
+  if(toupper(arg1) == "VAL"){return("V")}
+  if(toupper(arg1) == "TRP"){return("W")}
+  if(toupper(arg1) == "TYR"){return("Y")}
+  if(toupper(arg1) == "TER"){return("X")}
+}
+
+```
+
+
+
+```{r PDB D614G}
+# distance matrix for the RBD and ACE (D614G)
+pdb_7sxy_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7sxy_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sxy_ace2 <- pdb_7sxy_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sxy_rbd <- pdb_7sxy_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sxy_ace2_positionlist <- as.numeric(unique(pdb_7sxy_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sxy_rbd_positionlist <- as.numeric(unique(pdb_7sxy_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sxy_dist_frame <- data.frame(matrix(ncol = length(pdb_7sxy_rbd_positionlist), nrow = length(pdb_7sxy_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sxy_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sxy_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sxy_ace2 %>% filter(position == pdb_7sxy_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sxy_rbd %>% filter(position == pdb_7sxy_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sxy_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7sxy_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sxy_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (D614G)
+pdb_6m17_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_6m17_atoms.tsv", header = TRUE, sep = "\t")
+pdb_6m17_ace2 <- pdb_6m17_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_6m17_rbd <- pdb_6m17_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_6m17_ace2_positionlist <- as.numeric(unique(pdb_6m17_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_6m17_rbd_positionlist <- as.numeric(unique(pdb_6m17_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_6m17_dist_frame <- data.frame(matrix(ncol = length(pdb_6m17_rbd_positionlist), nrow = length(pdb_6m17_ace2_positionlist)))
+for(x in 1:nrow(pdb_6m17_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_6m17_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_6m17_ace2 %>% filter(position == pdb_6m17_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_6m17_rbd %>% filter(position == pdb_6m17_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_6m17_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/6m17_ace2row_rbdcol_dist_matrix_min.csv", pdb_6m17_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (D614G)
+pdb_6lzg_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_6lzg_atoms.tsv", header = TRUE, sep = "\t")
+pdb_6lzg_ace2 <- pdb_6lzg_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_6lzg_rbd <- pdb_6lzg_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_6lzg_ace2_positionlist <- as.numeric(unique(pdb_6lzg_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_6lzg_rbd_positionlist <- as.numeric(unique(pdb_6lzg_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_6lzg_dist_frame <- data.frame(matrix(ncol = length(pdb_6lzg_rbd_positionlist), nrow = length(pdb_6lzg_ace2_positionlist)))
+for(x in 1:nrow(pdb_6lzg_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_6lzg_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_6lzg_ace2 %>% filter(position == pdb_6lzg_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_6lzg_rbd %>% filter(position == pdb_6lzg_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_6lzg_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/6lzg_ace2row_rbdcol_dist_matrix_min.csv", pdb_6lzg_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (D614G)
+pdb_6m0j_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_6m0j_atoms.tsv", header = TRUE, sep = "\t")
+pdb_6m0j_ace2 <- pdb_6m0j_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_6m0j_rbd <- pdb_6m0j_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_6m0j_ace2_positionlist <- as.numeric(unique(pdb_6m0j_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_6m0j_rbd_positionlist <- as.numeric(unique(pdb_6m0j_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_6m0j_dist_frame <- data.frame(matrix(ncol = length(pdb_6m0j_rbd_positionlist), nrow = length(pdb_6m0j_ace2_positionlist)))
+for(x in 1:nrow(pdb_6m0j_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_6m0j_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_6m0j_ace2 %>% filter(position == pdb_6m0j_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_6m0j_rbd %>% filter(position == pdb_6m0j_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_6m0j_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/6m0j_ace2row_rbdcol_dist_matrix_min.csv", pdb_6m0j_dist_frame)
+```
+
+```{r PDB Alpha}
+
+# distance matrix for the RBD and ACE (Alpha)
+pdb_8dlk_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_8dlk_atoms.tsv", header = TRUE, sep = "\t")
+pdb_8dlk_ace2 <- pdb_8dlk_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_8dlk_rbd <- pdb_8dlk_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_8dlk_ace2_positionlist <- as.numeric(unique(pdb_8dlk_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_8dlk_rbd_positionlist <- as.numeric(unique(pdb_8dlk_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_8dlk_dist_frame <- data.frame(matrix(ncol = length(pdb_8dlk_rbd_positionlist), nrow = length(pdb_8dlk_ace2_positionlist)))
+for(x in 1:nrow(pdb_8dlk_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_8dlk_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_8dlk_ace2 %>% filter(position == pdb_8dlk_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_8dlk_rbd %>% filter(position == pdb_8dlk_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_8dlk_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/8dlk_ace2row_rbdcol_dist_matrix_min.csv", pdb_8dlk_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (Alpha)
+pdb_7r0z_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7r0z_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7r0z_ace2 <- pdb_7r0z_atoms %>% filter(chain == "D") %>% mutate(position = as.numeric(position))
+pdb_7r0z_rbd <- pdb_7r0z_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7r0z_ace2_positionlist <- as.numeric(unique(pdb_7r0z_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7r0z_rbd_positionlist <- as.numeric(unique(pdb_7r0z_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7r0z_dist_frame <- data.frame(matrix(ncol = length(pdb_7r0z_rbd_positionlist), nrow = length(pdb_7r0z_ace2_positionlist)))
+for(x in 1:nrow(pdb_7r0z_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7r0z_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7r0z_ace2 %>% filter(position == pdb_7r0z_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7r0z_rbd %>% filter(position == pdb_7r0z_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7r0z_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7r0z_ace2row_rbdcol_dist_matrix_min.csv", pdb_7r0z_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE
+pdb_7ekf_atoms <- read.table(file = "parsed_7ekf_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7ekf_ace2_chain1 <- pdb_7ekf_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7ekf_rbd_chain2 <- pdb_7ekf_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7ekf_ace2_positionlist <- as.numeric(unique(pdb_7ekf_ace2_chain1$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7ekf_rbd_positionlist <- as.numeric(unique(pdb_7ekf_rbd_chain2$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+## Adding annotations from the PTEN crystal structure / crowding
+#pdb_dist_frame <- data.frame(matrix(ncol = 10, nrow = 20))
+pdb_dist_frame <- data.frame(matrix(ncol = length(pdb_7ekf_rbd_positionlist), nrow = length(pdb_7ekf_ace2_positionlist)))
+for(x in 1:nrow(pdb_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7ekf_ace2_chain1 %>% filter(position == pdb_7ekf_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7ekf_rbd_chain2 %>% filter(position == pdb_7ekf_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7ekf_ace2row_rbdcol_dist_matrix_min.csv", pdb_dist_frame)
+```
+
+```{r PDB Beta}
+
+# distance matrix for the RBD and ACE (Beta)
+pdb_7vx4_atoms <- read.table(file = "parsed_7vx4_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7vx4_ace2 <- pdb_7vx4_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7vx4_rbd <- pdb_7vx4_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7vx4_ace2_positionlist <- as.numeric(unique(pdb_7vx4_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7vx4_rbd_positionlist <- as.numeric(unique(pdb_7vx4_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7vx4_dist_frame <- data.frame(matrix(ncol = length(pdb_7vx4_rbd_positionlist), nrow = length(pdb_7vx4_ace2_positionlist)))
+for(x in 1:nrow(pdb_7vx4_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7vx4_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7vx4_ace2 %>% filter(position == pdb_7vx4_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7vx4_rbd %>% filter(position == pdb_7vx4_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7vx4_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7vx4_ace2row_rbdcol_dist_matrix_min.csv", pdb_7vx4_dist_frame)
+
+
+# distance matrix for the RBD and ACE (Beta)
+pdb_8dln_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_8dln_atoms.tsv", header = TRUE, sep = "\t")
+pdb_8dln_ace2 <- pdb_8dln_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_8dln_rbd <- pdb_8dln_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_8dln_ace2_positionlist <- as.numeric(unique(pdb_8dln_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_8dln_rbd_positionlist <- as.numeric(unique(pdb_8dln_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_8dln_dist_frame <- data.frame(matrix(ncol = length(pdb_8dln_rbd_positionlist), nrow = length(pdb_8dln_ace2_positionlist)))
+for(x in 1:nrow(pdb_8dln_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_8dln_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_8dln_ace2 %>% filter(position == pdb_8dln_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_8dln_rbd %>% filter(position == pdb_8dln_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_8dln_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/8dln_ace2row_rbdcol_dist_matrix_min.csv", pdb_8dln_dist_frame)
+
+
+# distance matrix for the RBD and ACE (Beta)
+pdb_7v80_atoms <- read.table(file = "parsed_7v80_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7v80_ace2 <- pdb_7v80_atoms %>% filter(chain == "F") %>% mutate(position = as.numeric(position))
+pdb_7v80_rbd <- pdb_7v80_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7v80_ace2_positionlist <- as.numeric(unique(pdb_7v80_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7v80_rbd_positionlist <- as.numeric(unique(pdb_7v80_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7v80_dist_frame <- data.frame(matrix(ncol = length(pdb_7v80_rbd_positionlist), nrow = length(pdb_7v80_ace2_positionlist)))
+for(x in 1:nrow(pdb_7v80_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7v80_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7v80_ace2 %>% filter(position == pdb_7v80_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7v80_rbd %>% filter(position == pdb_7v80_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7v80_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7v80_ace2row_rbdcol_dist_matrix_min.csv", pdb_7v80_dist_frame)
+
+
+# distance matrix for the RBD and ACE (Beta)
+pdb_7ekg_atoms <- read.table(file = "parsed_7ekg_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7ekg_ace2 <- pdb_7ekg_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7ekg_rbd <- pdb_7ekg_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7ekg_ace2_positionlist <- as.numeric(unique(pdb_7ekg_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7ekg_rbd_positionlist <- as.numeric(unique(pdb_7ekg_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7ekg_dist_frame <- data.frame(matrix(ncol = length(pdb_7ekg_rbd_positionlist), nrow = length(pdb_7ekg_ace2_positionlist)))
+for(x in 1:nrow(pdb_7ekg_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7ekg_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7ekg_ace2 %>% filter(position == pdb_7ekg_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7ekg_rbd %>% filter(position == pdb_7ekg_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7ekg_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7ekg_ace2row_rbdcol_dist_matrix_min.csv", pdb_7ekg_dist_frame)
+```
+
+```{r PDB Gamma}
+
+# distance matrix for the RBD and ACE
+pdb_7ekc_atoms <- read.table(file = "parsed_7ekc_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7ekc_ace2_chain1 <- pdb_7ekc_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7ekc_rbd_chain2 <- pdb_7ekc_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7ekc_ace2_positionlist <- as.numeric(unique(pdb_7ekc_ace2_chain1$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7ekc_rbd_positionlist <- as.numeric(unique(pdb_7ekc_rbd_chain2$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+## Adding annotations from the PTEN crystal structure / crowding
+#pdb_dist_frame <- data.frame(matrix(ncol = 10, nrow = 20))
+pdb_dist_frame <- data.frame(matrix(ncol = length(pdb_7ekc_rbd_positionlist), nrow = length(pdb_7ekc_ace2_positionlist)))
+for(x in 1:nrow(pdb_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7ekc_ace2_chain1 %>% filter(position == pdb_7ekc_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7ekc_rbd_chain2 %>% filter(position == pdb_7ekc_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7ekc_ace2row_rbdcol_dist_matrix_min.csv", pdb_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (Gamma)
+pdb_7v84_atoms <- read.table(file = "parsed_7v84_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7v84_ace2 <- pdb_7v84_atoms %>% filter(chain == "F") %>% mutate(position = as.numeric(position))
+pdb_7v84_rbd <- pdb_7v84_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7v84_ace2_positionlist <- as.numeric(unique(pdb_7v84_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7v84_rbd_positionlist <- as.numeric(unique(pdb_7v84_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+## Adding annotations from the PTEN crystal structure / crowding
+#pdb_7v84_dist_frame <- data.frame(matrix(ncol = 10, nrow = 20))
+pdb_7v84_dist_frame <- data.frame(matrix(ncol = length(pdb_7v84_rbd_positionlist), nrow = length(pdb_7v84_ace2_positionlist)))
+for(x in 1:nrow(pdb_7v84_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7v84_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7v84_ace2 %>% filter(position == pdb_7v84_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7v84_rbd %>% filter(position == pdb_7v84_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7v84_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7v84_ace2row_rbdcol_dist_matrix_min.csv", pdb_7v84_dist_frame)
+
+
+# distance matrix for the RBD and ACE (Gamma)
+pdb_8dlq_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_8dlq_atoms.tsv", header = TRUE, sep = "\t")
+pdb_8dlq_ace2 <- pdb_8dlq_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_8dlq_rbd <- pdb_8dlq_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_8dlq_ace2_positionlist <- as.numeric(unique(pdb_8dlq_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_8dlq_rbd_positionlist <- as.numeric(unique(pdb_8dlq_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_8dlq_dist_frame <- data.frame(matrix(ncol = length(pdb_8dlq_rbd_positionlist), nrow = length(pdb_8dlq_ace2_positionlist)))
+for(x in 1:nrow(pdb_8dlq_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_8dlq_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_8dlq_ace2 %>% filter(position == pdb_8dlq_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_8dlq_rbd %>% filter(position == pdb_8dlq_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_8dlq_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/8dlq_ace2row_rbdcol_dist_matrix_min.csv", pdb_8dlq_dist_frame)
+```
+
+```{r PDB Delta}
+
+# distance matrix for the RBD and ACE (Delta)
+pdb_7w9i_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7w9i_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7w9i_ace2 <- pdb_7w9i_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7w9i_rbd <- pdb_7w9i_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7w9i_ace2_positionlist <- as.numeric(unique(pdb_7w9i_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7w9i_rbd_positionlist <- as.numeric(unique(pdb_7w9i_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7w9i_dist_frame <- data.frame(matrix(ncol = length(pdb_7w9i_rbd_positionlist), nrow = length(pdb_7w9i_ace2_positionlist)))
+for(x in 1:nrow(pdb_7w9i_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7w9i_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7w9i_ace2 %>% filter(position == pdb_7w9i_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7w9i_rbd %>% filter(position == pdb_7w9i_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7w9i_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7w9i_ace2row_rbdcol_dist_matrix_min.csv", pdb_7w9i_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (Delta)
+pdb_7v8b_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7v8b_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7v8b_ace2 <- pdb_7v8b_atoms %>% filter(chain == "F") %>% mutate(position = as.numeric(position))
+pdb_7v8b_rbd <- pdb_7v8b_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7v8b_ace2_positionlist <- as.numeric(unique(pdb_7v8b_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7v8b_rbd_positionlist <- as.numeric(unique(pdb_7v8b_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7v8b_dist_frame <- data.frame(matrix(ncol = length(pdb_7v8b_rbd_positionlist), nrow = length(pdb_7v8b_ace2_positionlist)))
+for(x in 1:nrow(pdb_7v8b_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7v8b_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7v8b_ace2 %>% filter(position == pdb_7v8b_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7v8b_rbd %>% filter(position == pdb_7v8b_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7v8b_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7v8b_ace2row_rbdcol_dist_matrix_min.csv", pdb_7v8b_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (Delta)
+pdb_7tew_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7tew_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7tew_ace2 <- pdb_7tew_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7tew_rbd <- pdb_7tew_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7tew_ace2_positionlist <- as.numeric(unique(pdb_7tew_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7tew_rbd_positionlist <- as.numeric(unique(pdb_7tew_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7tew_dist_frame <- data.frame(matrix(ncol = length(pdb_7tew_rbd_positionlist), nrow = length(pdb_7tew_ace2_positionlist)))
+for(x in 1:nrow(pdb_7tew_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7tew_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7tew_ace2 %>% filter(position == pdb_7tew_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7tew_rbd %>% filter(position == pdb_7tew_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7tew_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7tew_ace2row_rbdcol_dist_matrix_min.csv", pdb_7tew_dist_frame)
+
+
+
+
+# distance matrix for the RBD and ACE (Delta)
+pdb_7wbq_atoms <- read.table(file = "parsed_7wbq_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7wbq_ace2 <- pdb_7wbq_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7wbq_rbd <- pdb_7wbq_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7wbq_ace2_positionlist <- as.numeric(unique(pdb_7wbq_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7wbq_rbd_positionlist <- as.numeric(unique(pdb_7wbq_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7wbq_dist_frame <- data.frame(matrix(ncol = length(pdb_7wbq_rbd_positionlist), nrow = length(pdb_7wbq_ace2_positionlist)))
+for(x in 1:nrow(pdb_7wbq_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7wbq_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7wbq_ace2 %>% filter(position == pdb_7wbq_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7wbq_rbd %>% filter(position == pdb_7wbq_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7wbq_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7wbq_ace2row_rbdcol_dist_matrix_min.csv", pdb_7wbq_dist_frame)
+```
+
+```{r PDB BA1}
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7wk6_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7wk6_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7wk6_ace2 <- pdb_7wk6_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7wk6_rbd <- pdb_7wk6_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7wk6_ace2_positionlist <- as.numeric(unique(pdb_7wk6_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7wk6_rbd_positionlist <- as.numeric(unique(pdb_7wk6_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7wk6_dist_frame <- data.frame(matrix(ncol = length(pdb_7wk6_rbd_positionlist), nrow = length(pdb_7wk6_ace2_positionlist)))
+for(x in 1:nrow(pdb_7wk6_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7wk6_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7wk6_ace2 %>% filter(position == pdb_7wk6_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7wk6_rbd %>% filter(position == pdb_7wk6_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7wk6_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7wk6_ace2row_rbdcol_dist_matrix_min.csv", pdb_7wk6_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7t9l_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7t9l_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7t9l_ace2 <- pdb_7t9l_atoms %>% filter(chain == "D") %>% mutate(position = as.numeric(position))
+pdb_7t9l_rbd <- pdb_7t9l_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7t9l_ace2_positionlist <- as.numeric(unique(pdb_7t9l_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7t9l_rbd_positionlist <- as.numeric(unique(pdb_7t9l_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7t9l_dist_frame <- data.frame(matrix(ncol = length(pdb_7t9l_rbd_positionlist), nrow = length(pdb_7t9l_ace2_positionlist)))
+for(x in 1:nrow(pdb_7t9l_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7t9l_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7t9l_ace2 %>% filter(position == pdb_7t9l_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7t9l_rbd %>% filter(position == pdb_7t9l_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7t9l_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7t9l_ace2row_rbdcol_dist_matrix_min.csv", pdb_7t9l_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7wpb_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7wpb_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7wpb_ace2 <- pdb_7wpb_atoms %>% filter(chain == "D") %>% mutate(position = as.numeric(position))
+pdb_7wpb_rbd <- pdb_7wpb_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7wpb_ace2_positionlist <- as.numeric(unique(pdb_7wpb_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7wpb_rbd_positionlist <- as.numeric(unique(pdb_7wpb_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7wpb_dist_frame <- data.frame(matrix(ncol = length(pdb_7wpb_rbd_positionlist), nrow = length(pdb_7wpb_ace2_positionlist)))
+for(x in 1:nrow(pdb_7wpb_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7wpb_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7wpb_ace2 %>% filter(position == pdb_7wpb_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7wpb_rbd %>% filter(position == pdb_7wpb_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7wpb_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7wpb_ace2row_rbdcol_dist_matrix_min.csv", pdb_7wpb_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7u0n_atoms <- read.table(file = "parsed_7u0n_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7u0n_ace2 <- pdb_7u0n_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7u0n_rbd <- pdb_7u0n_atoms %>% filter(chain == "F") %>% mutate(position = as.numeric(position))
+pdb_7u0n_ace2_positionlist <- as.numeric(unique(pdb_7u0n_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7u0n_rbd_positionlist <- as.numeric(unique(pdb_7u0n_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7u0n_dist_frame <- data.frame(matrix(ncol = length(pdb_7u0n_rbd_positionlist), nrow = length(pdb_7u0n_ace2_positionlist)))
+for(x in 1:nrow(pdb_7u0n_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7u0n_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7u0n_ace2 %>% filter(position == pdb_7u0n_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7u0n_rbd %>% filter(position == pdb_7u0n_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7u0n_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7u0n_ace2row_rbdcol_dist_matrix_min.csv", pdb_7u0n_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7whh_atoms <- read.table(file = "parsed_7whh_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7whh_ace2 <- pdb_7whh_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7whh_rbd <- pdb_7whh_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7whh_ace2_positionlist <- as.numeric(unique(pdb_7whh_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7whh_rbd_positionlist <- as.numeric(unique(pdb_7whh_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7whh_dist_frame <- data.frame(matrix(ncol = length(pdb_7whh_rbd_positionlist), nrow = length(pdb_7whh_ace2_positionlist)))
+for(x in 1:nrow(pdb_7whh_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7whh_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7whh_ace2 %>% filter(position == pdb_7whh_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7whh_rbd %>% filter(position == pdb_7whh_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7whh_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7whh_ace2row_rbdcol_dist_matrix_min.csv", pdb_7whh_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7wbp_atoms <- read.table(file = "parsed_7wbp_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7wbp_ace2 <- pdb_7wbp_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7wbp_rbd <- pdb_7wbp_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7wbp_ace2_positionlist <- as.numeric(unique(pdb_7wbp_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7wbp_rbd_positionlist <- as.numeric(unique(pdb_7wbp_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7wbp_dist_frame <- data.frame(matrix(ncol = length(pdb_7wbp_rbd_positionlist), nrow = length(pdb_7wbp_ace2_positionlist)))
+for(x in 1:nrow(pdb_7wbp_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7wbp_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7wbp_ace2 %>% filter(position == pdb_7wbp_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7wbp_rbd %>% filter(position == pdb_7wbp_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7wbp_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7wbp_ace2row_rbdcol_dist_matrix_min.csv", pdb_7wbp_dist_frame)
+```
+
+```{r PDB Mouse with BA1}
+# distance matrix for the RBD and ACE (Mouse)
+pdb_8aqu_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_8aqu_atoms.tsv", header = TRUE, sep = "\t")
+pdb_8aqu_ace2 <- pdb_8aqu_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_8aqu_rbd <- pdb_8aqu_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_8aqu_ace2_positionlist <- as.numeric(unique(pdb_8aqu_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_8aqu_rbd_positionlist <- as.numeric(unique(pdb_8aqu_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_8aqu_dist_frame <- data.frame(matrix(ncol = length(pdb_8aqu_rbd_positionlist), nrow = length(pdb_8aqu_ace2_positionlist)))
+for(x in 1:nrow(pdb_8aqu_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_8aqu_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_8aqu_ace2 %>% filter(position == pdb_8aqu_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_8aqu_rbd %>% filter(position == pdb_8aqu_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_8aqu_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/8aqu_ace2row_rbdcol_dist_matrix_min.csv", pdb_8aqu_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_8dma_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_8dma_atoms.tsv", header = TRUE, sep = "\t")
+pdb_8dma_ace2 <- pdb_8dma_atoms %>% filter(chain == "D") %>% mutate(position = as.numeric(position))
+pdb_8dma_rbd <- pdb_8dma_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_8dma_ace2_positionlist <- as.numeric(unique(pdb_8dma_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_8dma_rbd_positionlist <- as.numeric(unique(pdb_8dma_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_8dma_dist_frame <- data.frame(matrix(ncol = length(pdb_8dma_rbd_positionlist), nrow = length(pdb_8dma_ace2_positionlist)))
+for(x in 1:nrow(pdb_8dma_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_8dma_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_8dma_ace2 %>% filter(position == pdb_8dma_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_8dma_rbd %>% filter(position == pdb_8dma_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_8dma_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "Data/PDB_contact_maps/8dma_ace2row_rbdcol_dist_matrix_min.csv", pdb_8dma_dist_frame)
+
+
+# distance matrix for the RBD and ACE (BA1)
+pdb_7xo6_atoms <- read.table(file = "Data/PDB_contact_maps/parsed_7xo6_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7xo6_ace2 <- pdb_7xo6_atoms %>% filter(chain == "D") %>% mutate(position = as.numeric(position))
+pdb_7xo6_rbd <- pdb_7xo6_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position))
+pdb_7xo6_ace2_positionlist <- as.numeric(unique(pdb_7xo6_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7xo6_rbd_positionlist <- as.numeric(unique(pdb_7xo6_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7xo6_dist_frame <- data.frame(matrix(ncol = length(pdb_7xo6_rbd_positionlist), nrow = length(pdb_7xo6_ace2_positionlist)))
+for(x in 1:nrow(pdb_7xo6_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7xo6_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7xo6_ace2 %>% filter(position == pdb_7xo6_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7xo6_rbd %>% filter(position == pdb_7xo6_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7xo6_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+#write.csv(file = "Data/PDB_contact_maps/7xo6_ace2row_rbdcol_dist_matrix_min.csv", pdb_7xo6_dist_frame)
+```
+
+```{r Individual structures}
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7mjn_atoms <- read.table(file = "parsed_7mjn_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7mjn_ace2 <- pdb_7mjn_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7mjn_rbd <- pdb_7mjn_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7mjn_ace2_positionlist <- as.numeric(unique(pdb_7mjn_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7mjn_rbd_positionlist <- as.numeric(unique(pdb_7mjn_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7mjn_dist_frame <- data.frame(matrix(ncol = length(pdb_7mjn_rbd_positionlist), nrow = length(pdb_7mjn_ace2_positionlist)))
+for(x in 1:nrow(pdb_7mjn_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7mjn_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7mjn_ace2 %>% filter(position == pdb_7mjn_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7mjn_rbd %>% filter(position == pdb_7mjn_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7mjn_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7mjn_ace2row_rbdcol_dist_matrix_min.csv", pdb_7mjn_dist_frame)
+
+
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7sy2_atoms <- read.table(file = "parsed_7sy2_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sy2_ace2 <- pdb_7sy2_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sy2_rbd <- pdb_7sy2_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sy2_ace2_positionlist <- as.numeric(unique(pdb_7sy2_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sy2_rbd_positionlist <- as.numeric(unique(pdb_7sy2_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sy2_dist_frame <- data.frame(matrix(ncol = length(pdb_7sy2_rbd_positionlist), nrow = length(pdb_7sy2_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sy2_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sy2_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sy2_ace2 %>% filter(position == pdb_7sy2_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sy2_rbd %>% filter(position == pdb_7sy2_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sy2_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7sy2_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sy2_dist_frame)
+
+
+
+
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7sy4_atoms <- read.table(file = "parsed_7sy4_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sy4_ace2 <- pdb_7sy4_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sy4_rbd <- pdb_7sy4_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sy4_ace2_positionlist <- as.numeric(unique(pdb_7sy4_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sy4_rbd_positionlist <- as.numeric(unique(pdb_7sy4_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sy4_dist_frame <- data.frame(matrix(ncol = length(pdb_7sy4_rbd_positionlist), nrow = length(pdb_7sy4_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sy4_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sy4_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sy4_ace2 %>% filter(position == pdb_7sy4_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sy4_rbd %>% filter(position == pdb_7sy4_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sy4_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7sy4_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sy4_dist_frame)
+
+
+
+
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7sy6_atoms <- read.table(file = "parsed_7sy6_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sy6_ace2 <- pdb_7sy6_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sy6_rbd <- pdb_7sy6_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sy6_ace2_positionlist <- as.numeric(unique(pdb_7sy6_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sy6_rbd_positionlist <- as.numeric(unique(pdb_7sy6_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sy6_dist_frame <- data.frame(matrix(ncol = length(pdb_7sy6_rbd_positionlist), nrow = length(pdb_7sy6_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sy6_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sy6_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sy6_ace2 %>% filter(position == pdb_7sy6_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sy6_rbd %>% filter(position == pdb_7sy6_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sy6_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7sy6_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sy6_dist_frame)
+
+
+
+
+
+
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7sy8_atoms <- read.table(file = "parsed_7sy8_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sy8_ace2 <- pdb_7sy8_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sy8_rbd <- pdb_7sy8_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sy8_ace2_positionlist <- as.numeric(unique(pdb_7sy8_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sy8_rbd_positionlist <- as.numeric(unique(pdb_7sy8_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sy8_dist_frame <- data.frame(matrix(ncol = length(pdb_7sy8_rbd_positionlist), nrow = length(pdb_7sy8_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sy8_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sy8_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sy8_ace2 %>% filter(position == pdb_7sy8_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sy8_rbd %>% filter(position == pdb_7sy8_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sy8_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7sy8_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sy8_dist_frame)
+
+
+# distance matrix for the RBD and ACE (Mouse)
+pdb_7sy0_atoms <- read.table(file = "parsed_7sy0_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7sy0_ace2 <- pdb_7sy0_atoms %>% filter(chain == "E") %>% mutate(position = as.numeric(position))
+pdb_7sy0_rbd <- pdb_7sy0_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7sy0_ace2_positionlist <- as.numeric(unique(pdb_7sy0_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7sy0_rbd_positionlist <- as.numeric(unique(pdb_7sy0_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7sy0_dist_frame <- data.frame(matrix(ncol = length(pdb_7sy0_rbd_positionlist), nrow = length(pdb_7sy0_ace2_positionlist)))
+for(x in 1:nrow(pdb_7sy0_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7sy0_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7sy0_ace2 %>% filter(position == pdb_7sy0_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7sy0_rbd %>% filter(position == pdb_7sy0_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7sy0_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7sy0_ace2row_rbdcol_dist_matrix_min.csv", pdb_7sy0_dist_frame)
+
+
+```
+
+```{r Animal orthologs with SARS2 Wuhan}
+
+# distance matrix for the RBD and R.affinis ACE2
+pdb_7xa7_atoms <- read.table(file = "parsed_7xa7_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7xa7_ace2 <- pdb_7xa7_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position)) %>% filter(position <= 400)
+pdb_7xa7_rbd <- pdb_7xa7_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7xa7_ace2_positionlist <- as.numeric(unique(pdb_7xa7_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7xa7_rbd_positionlist <- as.numeric(unique(pdb_7xa7_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7xa7_dist_frame <- data.frame(matrix(ncol = length(pdb_7xa7_rbd_positionlist), nrow = length(pdb_7xa7_ace2_positionlist)))
+for(x in 1:nrow(pdb_7xa7_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7xa7_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7xa7_ace2 %>% filter(position == pdb_7xa7_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7xa7_rbd %>% filter(position == pdb_7xa7_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7xa7_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7xa7_ace2row_rbdcol_dist_matrix_min.csv", pdb_7xa7_dist_frame)
+
+
+
+
+# distance matrix for the RBD and Horse ACE2
+pdb_7w6u_atoms <- read.table(file = "parsed_7w6u_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7w6u_ace2 <- pdb_7w6u_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position)) %>% filter(position <= 400)
+pdb_7w6u_rbd <- pdb_7w6u_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7w6u_ace2_positionlist <- as.numeric(unique(pdb_7w6u_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7w6u_rbd_positionlist <- as.numeric(unique(pdb_7w6u_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7w6u_dist_frame <- data.frame(matrix(ncol = length(pdb_7w6u_rbd_positionlist), nrow = length(pdb_7w6u_ace2_positionlist)))
+for(x in 1:nrow(pdb_7w6u_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7w6u_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7w6u_ace2 %>% filter(position == pdb_7w6u_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7w6u_rbd %>% filter(position == pdb_7w6u_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7w6u_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7w6u_ace2row_rbdcol_dist_matrix_min.csv", pdb_7w6u_dist_frame)
+
+
+# distance matrix for the RBD and Horse ACE2
+pdb_7fc6_atoms <- read.table(file = "parsed_7fc6_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7fc6_ace2 <- pdb_7fc6_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position)) %>% filter(position <= 400)
+pdb_7fc6_rbd <- pdb_7fc6_atoms %>% filter(chain == "S") %>% mutate(position = as.numeric(position))
+pdb_7fc6_ace2_positionlist <- as.numeric(unique(pdb_7fc6_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7fc6_rbd_positionlist <- as.numeric(unique(pdb_7fc6_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7fc6_dist_frame <- data.frame(matrix(ncol = length(pdb_7fc6_rbd_positionlist), nrow = length(pdb_7fc6_ace2_positionlist)))
+for(x in 1:nrow(pdb_7fc6_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7fc6_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7fc6_ace2 %>% filter(position == pdb_7fc6_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7fc6_rbd %>% filter(position == pdb_7fc6_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7fc6_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7fc6_ace2row_rbdcol_dist_matrix_min.csv", pdb_7fc6_dist_frame)
+
+
+
+
+# distance matrix for the RBD and Macrotis ACE2
+pdb_7c8j_atoms <- read.table(file = "parsed_7c8j_atoms.tsv", header = TRUE, sep = "\t")
+pdb_7c8j_ace2 <- pdb_7c8j_atoms %>% filter(chain == "A") %>% mutate(position = as.numeric(position)) %>% filter(position <= 400)
+pdb_7c8j_rbd <- pdb_7c8j_atoms %>% filter(chain == "B") %>% mutate(position = as.numeric(position))
+pdb_7c8j_ace2_positionlist <- as.numeric(unique(pdb_7c8j_ace2$position)) ## For interpretation, need to add 18 later since actually starts at residue 19
+pdb_7c8j_rbd_positionlist <- as.numeric(unique(pdb_7c8j_rbd$position)) ## For interpretation, need to add 316 later since actually starts at residue 331
+
+pdb_7c8j_dist_frame <- data.frame(matrix(ncol = length(pdb_7c8j_rbd_positionlist), nrow = length(pdb_7c8j_ace2_positionlist)))
+for(x in 1:nrow(pdb_7c8j_dist_frame)){  ## Rows are positions in ACE2
+  for(y in 1:ncol(pdb_7c8j_dist_frame)){  ## Columns are positions in the RBD
+    ace2_subset <- pdb_7c8j_ace2 %>% filter(position == pdb_7c8j_ace2_positionlist[x] & !(name %in% c("N","C","O")))
+    rbd_subset <- pdb_7c8j_rbd %>% filter(position == pdb_7c8j_rbd_positionlist[y] & !(name %in% c("N","C","O")))
+    temp_distance_list <- c()
+    for(a in 1:nrow(ace2_subset)){
+      for(b in 1:nrow(rbd_subset)){
+        temp_distance_list <- c(temp_distance_list,sqrt((abs(ace2_subset$xca[a] - rbd_subset$xca[b]))^2 + (abs(ace2_subset$yca[a] - rbd_subset$yca[b]))^2 + (abs(ace2_subset$zca[a] - rbd_subset$zca[b]))^2))
+        #unique(temp_distance_list)
+      }
+    }
+    pdb_7c8j_dist_frame[x,y] <- min(temp_distance_list, na.rm = T)
+  }
+  #if(x %in% seq(1,600,10)){print(x)}
+  print(x)
+}
+
+write.csv(file = "7c8j_ace2row_rbdcol_dist_matrix_min.csv", pdb_7c8j_dist_frame)
+
+
+
+```
+

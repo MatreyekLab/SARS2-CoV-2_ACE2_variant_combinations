@@ -381,10 +381,96 @@ ns7_delta2 <- makeExperimentFrame2(c(8,8,11,11)) %>% filter(h_enrichment != "Inf
 ns7_delta3 <- makeExperimentFrame2(c(14,14,17,17)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
 ns7_ba1omicron1 <- makeExperimentFrame2(c(1,1,5,5)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
 ns7_ba1omicron2 <- makeExperimentFrame2(c(8,8,12,12)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
-ns7_ba4omicron1 <- makeExperimentFrame2(c(1,1,6,6)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
-ns7_bq1omicron1 <- makeExperimentFrame2(c(1,1,7,7)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
-ns7_bq1omicron2 <- makeExperimentFrame2(c(8,8,13,13)) %>% filter(h_enrichment != "Inf") %>% arrange(desc(h_enrichment))
+
 ```
+
+```{r Combine all data to make a processed file I can upload to GEO}
+ns3_g740d1$seq9 <- ns3_g740d1$sequence
+ns3_g740d2$seq9 <- ns3_g740d2$sequence
+ns3_alpha1$seq9 <- ns3_g740d2$sequence
+ns3_alpha2$seq9 <- ns3_alpha2$sequence
+ns3_beta1$seq9 <- ns3_beta1$sequence
+ns3_beta2$seq9 <- ns3_beta2$sequence
+ns3_delta1$seq9 <- ns3_delta1$sequence
+ns3_delta2$seq9 <- ns3_delta2$sequence
+ns3_gamma1$seq9 <- ns3_gamma1$sequence
+ns3_gamma2$seq9 <- ns3_gamma2$sequence
+ns3_ba1omicron1$seq9 <- ns3_ba1omicron1$sequence
+ns3_ba1omicron2$seq9 <- ns3_ba1omicron2$sequence
+ns4_g928a$seq9 <- paste0(substr(ns4_g928a$sequence,1,5),substr(ns4_g928a$sequence,7,10),"N",substr(ns4_g928a$sequence,11,19))
+ns4_g928b$seq9 <- paste0(substr(ns4_g928b$sequence,1,5),substr(ns4_g928b$sequence,7,10),"N",substr(ns4_g928b$sequence,11,19))
+ns4_g928c$seq9 <- paste0(substr(ns4_g928c$sequence,1,5),substr(ns4_g928c$sequence,7,10),"N",substr(ns4_g928c$sequence,11,19))
+ns4_g928d$seq9 <- paste0(substr(ns4_g928d$sequence,1,5),substr(ns4_g928d$sequence,7,10),"N",substr(ns4_g928d$sequence,11,19))
+ns7_g928a1$seq9 <- paste0(substr(ns7_g928a1$sequence,1,5),substr(ns7_g928a1$sequence,7,10),"N",substr(ns7_g928a1$sequence,11,19))
+ns7_g928a2$seq9 <- paste0(substr(ns7_g928a2$sequence,1,5),substr(ns7_g928a2$sequence,7,10),"N",substr(ns7_g928a2$sequence,11,19))
+ns7_g928a3$seq9 <- paste0(substr(ns7_g928a3$sequence,1,5),substr(ns7_g928a3$sequence,7,10),"N",substr(ns7_g928a3$sequence,11,19))
+ns7_alpha1$seq9 <- paste0(substr(ns7_alpha1$sequence,1,5),substr(ns7_alpha1$sequence,7,10),"N",substr(ns7_alpha1$sequence,11,19))
+ns7_alpha2$seq9 <- paste0(substr(ns7_alpha2$sequence,1,5),substr(ns7_alpha2$sequence,7,10),"N",substr(ns7_alpha2$sequence,11,19))
+ns7_alpha3$seq9 <- paste0(substr(ns7_alpha3$sequence,1,5),substr(ns7_alpha3$sequence,7,10),"N",substr(ns7_alpha3$sequence,11,19))
+ns7_delta1$seq9 <- paste0(substr(ns7_delta1$sequence,1,5),substr(ns7_delta1$sequence,7,10),"N",substr(ns7_delta1$sequence,11,19))
+ns7_delta2$seq9 <- paste0(substr(ns7_delta2$sequence,1,5),substr(ns7_delta2$sequence,7,10),"N",substr(ns7_delta2$sequence,11,19))
+ns7_delta3$seq9 <- paste0(substr(ns7_delta3$sequence,1,5),substr(ns7_delta3$sequence,7,10),"N",substr(ns7_delta3$sequence,11,19))
+ns7_ba1omicron1$seq9 <- paste0(substr(ns7_ba1omicron1$sequence,1,5),substr(ns7_ba1omicron1$sequence,7,10),"N",substr(ns7_ba1omicron1$sequence,11,19))
+ns7_ba1omicron2$seq9 <- paste0(substr(ns7_ba1omicron2$sequence,1,5),substr(ns7_ba1omicron2$sequence,7,10),"N",substr(ns7_ba1omicron2$sequence,11,19))
+
+for_geo <- merge(ns3_g740d1[,c("gene","ortholog","mutant","protease","kozak","plasmid_template","concat","seq9")], ns7_g928a1[,c("sequence","seq9")], by = "seq9", all = T)
+
+## Adding the 8 replicates for D614G
+for_geo <- merge(for_geo, ns3_g740d1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_g740d2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns4_g928a[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns4_g928b[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns4_g928c[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_g928a1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_g928a2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_g928a3[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+## Adding the 5 replicates for Alpha
+for_geo <- merge(for_geo, ns3_alpha1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_alpha2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_alpha1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_alpha2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_alpha3[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+## Adding the 2 replicates for Beta
+for_geo <- merge(for_geo, ns3_beta1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_beta2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+## Adding the 2 replicates for Gamma
+for_geo <- merge(for_geo, ns3_gamma1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_gamma2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+## Adding the 5 replicates for Delta
+for_geo <- merge(for_geo, ns3_delta1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_delta2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_delta1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_delta2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_delta3[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+## Adding the 4 replicates for Omicron BA1
+for_geo <- merge(for_geo, ns3_ba1omicron1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns3_ba1omicron2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_ba1omicron1[,c("seq9","h_enrichment")], by = "seq9", all = T)
+for_geo <- merge(for_geo, ns7_ba1omicron2[,c("seq9","h_enrichment")], by = "seq9", all = T)
+
+colnames(for_geo) <- c("sequence","gene","ortholog","mutant","protease","kozak","plasmid_template","concat","seq9",
+                       "d614g_1","d614g_2","d614g_3","d614g_4","d614g_5","d614g_6","d614g_7","d614g_8",
+                       "alpha_1","alpha_2","alpha_3","alpha_4","alpha_5",
+                       "beta_1","beta_2",
+                       "gamma_1","gammaa_2",
+                       "delta_1","delta_2","delta_3","delta_4","delta_5",
+                       "ba1_1","ba1_2","ba1_3","ba1_4")
+
+write.csv(file = "Output_tables/Processed_enrichment_scores.csv",for_geo,row.names = F, quote = FALSE)
+```
+
+
+
+
+
+
+
+
 
 ```{r Making an example scatter plot of how certain samples become enriched following selection with the D614G dataset}
 
@@ -607,7 +693,7 @@ low_kozak1 <- low_kozak
 low_kozak1 <- low_kozak[colnames(low_kozak)[(colnames(low_kozak) %in% c("mutant","D614G","Alpha","Beta","Gamma","Delta","BA1"))]]
 low_kozak1_melt <- melt(low_kozak1, id = "mutant")
 #low_kozak1_melt$variable <- factor(low_kozak1_melt$variable, levels = c(""))
-low_kozak1_melt$mutant <- factor(low_kozak1_melt$mutant, levels = c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E","E329G", "E329K", "G352V", "K353D", "D355N"))
+low_kozak1_melt$mutant <- factor(low_kozak1_melt$mutant, levels = c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E", "E329K", "G352V", "K353D", "D355N"))
 
 low_kozak1_ace2mutants <- ggplot() + labs(x = NULL, y = NULL) + theme(axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45)) + 
   scale_fill_gradient(low = "white", high = "red") + 
@@ -627,7 +713,7 @@ for(x in c(colnames(low_kozak)[(colnames(low_kozak) %in% c("D614G","Alpha","Beta
 low_kozak2 <- low_kozak2[,c(colnames(low_kozak)[(colnames(low_kozak) %in% c("mutant","D614G","Alpha","Beta","Gamma","Delta","BA1"))])]
 low_kozak2_melt <- melt(low_kozak2, id = "mutant")
 low_kozak2_melt$variable <- factor(low_kozak2_melt$variable, levels = c("D614G","Alpha","Beta","Gamma","Delta","BA1"))
-low_kozak2_melt$mutant <- factor(low_kozak2_melt$mutant, levels = c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E","E329G", "E329K", "G352V", "K353D", "D355N"))
+low_kozak2_melt$mutant <- factor(low_kozak2_melt$mutant, levels = c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E", "E329K", "G352V", "K353D", "D355N"))
 
 low_kozak2_ace2mutants <- ggplot() + labs(x = NULL, y = NULL) + theme(axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45)) + 
   scale_fill_gradient(low = "white", high = "red", limits = c()) + 
@@ -636,7 +722,7 @@ low_kozak2_ace2mutants
 ggsave(file = "Plots/low_kozak2_ace2mutants.pdf", low_kozak2_ace2mutants, height = 1.1, width = 3.1)
 
 
-low_kozak2_melt$mutant <- factor(low_kozak2_melt$mutant, levels = rev(c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E","E329G", "E329K", "G352V", "K353D", "D355N")))
+low_kozak2_melt$mutant <- factor(low_kozak2_melt$mutant, levels = rev(c("WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E", "E329K", "G352V", "K353D", "D355N")))
 
 low_kozak2_ace2mutants_s2variants_flip <- ggplot() + labs(x = NULL, y = NULL) + theme(axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45), legend.position = "top") + 
   scale_fill_gradient(low = "white", high = "red") + 
@@ -646,6 +732,158 @@ ggsave(file = "Plots/low_kozak2_ace2mutants_s2variants_flip.pdf", low_kozak2_ace
 
 ```
 
+```{r REVISION - To show reproducibility of the low Kozak human mutant sample values}
+s2d614g_hmuts <- merge(s2d614g, sample_key1[,c("ortholog","mutant","plasmid_template","kozak")])
+colnames(s2d614g_hmuts)[2:10] <- c("r1","r2","r3","r4","r5","r6","r7","r8","r9")
+s2d614g_hmuts2 <- s2d614g_hmuts %>% filter(ortholog %in% c("H.sapiens","Control"))
+s2d614g_hmuts2$label <- paste0(s2d614g_hmuts2$kozak,"_",s2d614g_hmuts2$mutant)
+
+s2d614g_hmuts2_melt <- melt(s2d614g_hmuts2, "id" = "label") %>% filter(variable %in% c("r1","r2","r3","r4","r5","r6","r7","r8","r9")) %>% filter(label != "high_D355N" & label != "high_WT")
+s2d614g_hmuts2_melt$value <- as.numeric(s2d614g_hmuts2_melt$value)
+
+s2d614g_hmuts2_melt_median <- s2d614g_hmuts2_melt %>% group_by(label) %>% summarize(median = median(value)) %>% arrange(desc(median))
+s2d614g_hmuts2_melt$label <- factor(s2d614g_hmuts2_melt$label, levels = s2d614g_hmuts2_melt_median$label)
+
+ggplot() + theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5), panel.grid.major.x = element_blank()) +
+  geom_boxplot(data = s2d614g_hmuts2_melt, aes(x = label, y = value), coef=0, outlier.alpha = 0) +
+  geom_quasirandom(data = s2d614g_hmuts2_melt, aes(x = label, y = value), color = "red", alpha = 0.3) +
+  geom_point(data = s2d614g_hmuts2_melt_median, aes(x = label, y = median), shape = 95, size = 8) +
+  labs(x = NULL, y = "Log10 enrichment") +
+  NULL
+
+
+s2ba1omicron_hmuts <- merge(s2ba1omicron, sample_key1[,c("ortholog","mutant","plasmid_template","kozak")])
+colnames(s2ba1omicron_hmuts)[2:5] <- c("r1","r2","r3","r4")
+s2ba1omicron_hmuts2 <- s2ba1omicron_hmuts %>% filter(ortholog %in% c("H.sapiens","Control"))
+s2ba1omicron_hmuts2$label <- paste0(s2ba1omicron_hmuts2$kozak,"_",s2ba1omicron_hmuts2$mutant)
+
+s2ba1omicron_hmuts2_melt <- melt(s2ba1omicron_hmuts2, "id" = "label") %>% filter(variable %in% c("r1","r2","r3","r4","r5","r6","r7","r8","r9")) %>% filter(label != "low_E329K" & label != "high_D355N" & label != "high_WT")
+s2ba1omicron_hmuts2_melt$value <- as.numeric(s2ba1omicron_hmuts2_melt$value)
+
+s2ba1omicron_hmuts2_melt_median <- s2ba1omicron_hmuts2_melt %>% group_by(label) %>% summarize(median = median(value)) %>% arrange(desc(median))
+s2ba1omicron_hmuts2_melt$label <- factor(s2ba1omicron_hmuts2_melt$label, levels = s2ba1omicron_hmuts2_melt_median$label)
+
+ggplot() + theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5), panel.grid.major.x = element_blank()) +
+  geom_boxplot(data = s2ba1omicron_hmuts2_melt, aes(x = label, y = value), coef=0, outlier.alpha = 0) +
+  geom_quasirandom(data = s2ba1omicron_hmuts2_melt, aes(x = label, y = value), color = "red", alpha = 0.3) +
+  geom_point(data = s2ba1omicron_hmuts2_melt_median, aes(x = label, y = median), shape = 95, size = 8) +
+  labs(x = NULL, y = "Log10 enrichment") +
+  NULL
+
+## Getting ratios
+
+d614g_dEcto_wt <- merge(s2d614g_hmuts2_melt %>% filter(label == "high_dEcto"),s2d614g_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "D614G")
+ba1_dEcto_wt <- merge(s2ba1omicron_hmuts2_melt %>% filter(label == "high_dEcto"),s2ba1omicron_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "Omicron BA1")
+d614g_ba1_dEcto_wt <- rbind(d614g_dEcto_wt[,c("label.x","virus","variable","ratio")], ba1_dEcto_wt[,c("label.x","virus","variable","ratio")])
+
+d614g_k31d_wt <- merge(s2d614g_hmuts2_melt %>% filter(label == "low_K31D"),s2d614g_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "D614G")
+ba1_k31d_wt <- merge(s2ba1omicron_hmuts2_melt %>% filter(label == "low_K31D"),s2ba1omicron_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "Omicron BA1")
+d614g_ba1_k31d_wt <- rbind(d614g_k31d_wt[,c("label.x","virus","variable","ratio")], ba1_k31d_wt[,c("label.x","virus","variable","ratio")])
+
+d614g_d38h_wt <- merge(s2d614g_hmuts2_melt %>% filter(label == "low_D38H"),s2d614g_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "D614G")
+ba1_d38h_wt <- merge(s2ba1omicron_hmuts2_melt %>% filter(label == "low_D38H"),s2ba1omicron_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "Omicron BA1")
+d614g_ba1_d38h_wt <- rbind(d614g_d38h_wt[,c("label.x","virus","variable","ratio")], ba1_d38h_wt[,c("label.x","virus","variable","ratio")])
+
+d614g_e35k_wt <- merge(s2d614g_hmuts2_melt %>% filter(label == "low_E35K"),s2d614g_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "D614G")
+ba1_e35k_wt <- merge(s2ba1omicron_hmuts2_melt %>% filter(label == "low_E35K"),s2ba1omicron_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "Omicron BA1")
+d614g_ba1_e35k_wt <- rbind(d614g_e35k_wt[,c("label.x","virus","variable","ratio")], ba1_e35k_wt[,c("label.x","virus","variable","ratio")])
+
+d614g_e329k_wt <- merge(s2d614g_hmuts2_melt %>% filter(label == "low_E329K"),s2d614g_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "D614G")
+ba1_e329k_wt <- merge(s2ba1omicron_hmuts2_melt %>% filter(label == "low_E329K"),s2ba1omicron_hmuts2_melt %>% filter(label == "low_WT"), by = "variable") %>% mutate(ratio = value.x - value.y) %>% mutate(virus = "Omicron BA1")
+d614g_ba1_e329k_wt <- rbind(d614g_e329k_wt[,c("label.x","virus","variable","ratio")], ba1_e329k_wt[,c("label.x","virus","variable","ratio")])
+
+
+combined_ratios <- rbind(d614g_ba1_k31d_wt, d614g_ba1_d38h_wt, d614g_ba1_e35k_wt, d614g_ba1_e329k_wt) %>% mutate(linear_ratio = 10^ratio) #%>% filter(!(virus == "Omicron BA1" & variable == "r4" & label.x %in% c("low_E35K","low_D38H","low_E329K")))
+combined_ratios$label.x <- factor(combined_ratios$label.x, levels = c("low_K31D","low_E35K","low_D38H","low_E329K"))
+
+combined_ratios_ave <- combined_ratios %>% group_by(label.x, virus) %>% summarize(geomean_ratio = 10^(mean(ratio)), mean_ratio = mean(linear_ratio))
+
+Revision_variant_WT_ratios_plot <- ggplot() + 
+  theme(panel.grid.major.x = element_blank(), legend.position = "bottom", axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45)) +
+  geom_point(data = combined_ratios, aes(x = label.x, y = linear_ratio, color = virus), position = position_dodge(width = 0.5), alpha = 0.4) +
+  geom_point(data = combined_ratios_ave, aes(x = label.x, y = mean_ratio, color = virus), position = position_dodge(width = 0.5), shape = 95, size = 8) +
+  labs(x = NULL, y = "Variant to WT ACE2\ninfection ratio") +
+  NULL; Revision_variant_WT_ratios_plot
+ggsave(file = "Plots/Revision_variant_WT_ratios_plot.pdf", Revision_variant_WT_ratios_plot, height = 2.5, width = 3)
+
+```
+
+
+```{r REVISION - Bootstrapping of the K31D difference between D614G and Omicron}
+## Bootstrap test
+bootstrap_n <- 1000
+label_vector <- c("low_K31D")
+d614g_geomean_vector <- c()
+ba1_geomean_vector <- c()
+for(x in 1:bootstrap_n){
+  for(y in 1:length(label_vector)){
+    temp_d614g_vector <- (combined_ratios %>% filter(virus == "D614G" & label.x == label_vector[y]))[,"ratio"]
+    temp_ba1_vector <- (combined_ratios %>% filter(virus == "Omicron BA1" & label.x == label_vector[y]))[,"ratio"]
+    temp_d614g_value <- mean(sample(temp_d614g_vector,length(temp_d614g_vector),replace = T))
+    d614g_geomean_vector <- c(d614g_geomean_vector,temp_d614g_value)
+    temp_ba1_value <- mean(sample(temp_ba1_vector,length(temp_ba1_vector),replace = T))
+    ba1_geomean_vector <- c(ba1_geomean_vector,temp_ba1_value)
+  }
+}
+
+bootstrap_results_df <- data.frame("d614g" = d614g_geomean_vector, "ba1" = ba1_geomean_vector)
+bootstrap_results_df$ba1_larger <- (bootstrap_results_df$ba1 - bootstrap_results_df$d614g) > 0
+
+sum(bootstrap_results_df) / nrow(bootstrap_results_df)
+
+bootstrap_results_df_melt <- melt(bootstrap_results_df[,c("d614g","ba1")])
+bootstrap_results_df_melt$variable <- as.character(bootstrap_results_df_melt$variable)
+
+bootstrap_results_df_melt[bootstrap_results_df_melt$variable == "d614g","variable"] <- "D614G"
+bootstrap_results_df_melt[bootstrap_results_df_melt$variable == "ba1","variable"] <- "Omicron BA1"
+
+Revision_D614G_BA1_K31D_plot <- ggplot() + theme(panel.grid.major.x = element_blank()) + 
+  geom_violin(data = bootstrap_results_df_melt, aes(x = variable, y = value)) + 
+  geom_point(data = d614g_ba1_k31d_wt, aes(x = virus, y = ratio), position = position_dodge(width = 0.5)) +
+  labs(x = NULL, y = "K31D to WT ratio") +
+  NULL; Revision_D614G_BA1_K31D_plot
+ggsave(file = "Plots/Revision_D614G_BA1_K31D_plot.pdf", Revision_D614G_BA1_K31D_plot, height = 2.5, width = 2)
+
+```
+
+
+```{r REVISION - To show reproducibility of the low Kozak human mutant sample values}
+## Probability that the D614G and Omicron BA1 versions of each sample come from the same population
+s2d614g_hmuts2_melt$virus <- "D614G"
+s2ba1omicron_hmuts2_melt$virus <- "Omicron_BA1"
+
+d614g_omicron_comparison <- rbind(s2d614g_hmuts2_melt, s2ba1omicron_hmuts2_melt)
+
+ggplot() + theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5), panel.grid.major.x = element_blank()) +
+  #geom_boxplot(data = s2ba1omicron_hmuts2_melt, aes(x = label, y = value), coef=0, outlier.alpha = 0) +
+  geom_quasirandom(data = d614g_omicron_comparison, aes(x = label, y = value, color = virus), alpha = 0.8) +
+  #geom_point(data = d614g_omicron_comparison, aes(x = label, y = median), shape = 95, size = 8) +
+  labs(x = NULL, y = "Log10 enrichment") +
+  NULL
+
+```
+
+```{r REVISION - Looking at how variable some of the ortholog infection values are}
+
+s2d614g_orthologs <- s2d614g_hmuts %>% filter(!(ortholog %in% c("H.sapiens")))
+
+s2d614g_orthologs_melt <- melt(s2d614g_orthologs) %>% filter(variable %in% c("r1","r2","r3","r4","r5","r6","r7","r8","r9"))
+
+s2d614g_orthologs_melt_ave <- s2d614g_orthologs_melt %>% group_by(ortholog) %>% summarize(meanvalue = mean(value))
+
+Revision_D614G_orthologs_plot <- ggplot() + theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, angle = -90), panel.grid.major.x = element_blank()) + 
+  labs(x = NULL , y = "Log10 enrichment ratio") +
+  geom_quasirandom(data = s2d614g_orthologs_melt, aes(x = ortholog, y = value), alpha = 0.3) +
+  geom_point(data = s2d614g_orthologs_melt_ave, aes(x = ortholog, y = meanvalue), size = 8, shape = 95) +
+  NULL; Revision_D614G_orthologs_plot
+ggsave(file = "Plots/Revision_D614G_orthologs_plot.pdf", Revision_D614G_orthologs_plot, height = 2.5, width = 4)
+
+```
+
+
+
+
+
 ```{r Making a combined heatmap with both orthologs and variants to demonstrate the full scale of enrichment scores captured in this dataset}
 not_ortholog_not_lowkozak <- combined2 %>% filter(kozak == "high" & protease == "none")
 
@@ -654,7 +892,7 @@ combined_ortholog_variant <- rbind((ortholog1_melt %>% mutate(sample = ortholog)
 
 combined_ortholog_variant$variable <- factor(combined_ortholog_variant$variable, levels = c("D614G","Alpha","Beta","Gamma","Delta","BA1"))
 
-combined_ortholog_variant$sample <- factor(combined_ortholog_variant$sample, levels = rev(c("Control", "H.sapiens", "H.sapiens(rep1)", "H.sapiens(rep2)", "M.musculus", "S.scrofa", "M.javanica", "R.landeri", "R.alcyone", "R.ferrumequinum", "R.shameli", "R.affinis",  "R.sinicus_215", "R.sinicus_275", "R.sinicus_200", "R.sinicus_472", "R.pearsonii", "WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E","E329G", "E329K", "G352V", "K353D", "D355N")))
+combined_ortholog_variant$sample <- factor(combined_ortholog_variant$sample, levels = rev(c("Control", "H.sapiens", "H.sapiens(rep1)", "H.sapiens(rep2)", "M.musculus", "S.scrofa", "M.javanica", "R.landeri", "R.alcyone", "R.ferrumequinum", "R.shameli", "R.affinis",  "R.sinicus_215", "R.sinicus_275", "R.sinicus_200", "R.sinicus_472", "R.pearsonii", "WT", "dEcto", "I21N", "E23K", "K26E", "K31D", "E35K", "D38H", "G326E", "E329K", "G352V", "K353D", "D355N")))
 
 combined_ortholog_variant_plot <- ggplot() + labs(x = NULL, y = NULL) + theme(axis.text.x = element_text(hjust = 1, vjust = 1, angle = 45), legend.position = "top") + 
   scale_fill_gradient(low = "white", high = "red", na.value = "white") +  #limits=c(-0.25,0.75), 
@@ -2495,7 +2733,7 @@ ggsave(file = "Plots/Infection_step_plot.pdf", Infection_step_plot, height = 1.7
 ## Below is an analysis method for comparing the differences in infection between the various SARS-CoV-2 RBD variants
 ```{r Create scatterplots for pairwise comparisons between SARS2 variants with ACE2 orthologs}
 
-humutant_labels <- c("WT","K31D","K353D","D38H","E23K","K26E","I21N","E329G","G352V","E35K","D355N","G326E")
+humutant_labels <- c("WT","K31D","K353D","D38H","E23K","K26E","I21N","E329K","G352V","E35K","D355N","G326E")
 
 combined_ortholog_variant_unmelt$set_label <- "ortholog"
 
@@ -3223,3 +3461,8 @@ ggsave(file = "Plots/Final_correlations_plot.pdf", Final_correlations_plot, heig
 
 
 ```
+
+```{r Additional plots as part of the revision process}
+
+```
+
